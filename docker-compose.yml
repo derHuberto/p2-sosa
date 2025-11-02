@@ -1,49 +1,47 @@
-version: "3.8"
-
 services:
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:latest
     container_name: ollama
-    networks:
-      - ai-net
+    ports:
+      - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
-    restart: always
-    command: >
-      sh -c "ollama pull deepseek-coder:1.3b && ollama serve"
-
+      - ollama:/root/.ollama
+    restart: unless-stopped
+    entrypoint: >
+      sh -c "
+        ollama serve & 
+        sleep 5 && 
+        ollama pull deepseek-coder:6.7b &&
+        wait
+      "
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
-    environment:
-      - OLLAMA_API_BASE_URL=http://ollama:11434
-    networks:
-      - ai-net
-    ports:
-      - "3000:8080"
-    volumes:
-      - open-webui-data:/app/backend/data
-    restart: always
     depends_on:
       - ollama
-
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_API_BASE=http://ollama:11434
+      - WEBUI_AUTH=false
+    volumes:
+      - open-webui:/app/backend/data
+    restart: unless-stopped
   nginx:
-    image: nginx:alpine
+    image: nginx:latest
     container_name: nginx
-    networks:
-      - ai-net
+    depends_on:
+      - open-webui
     ports:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    restart: always
-    depends_on:
-      - open-webui
-
-volumes:
-  ollama-data:
-  open-webui-data:
+    restart: unless-stopped
 
 networks:
-  ai-net:
-    driver: bridge
+  default:
+    name: ollama-net
+
+volumes:
+  ollama:
+  open-webui:
