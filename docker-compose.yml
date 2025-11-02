@@ -29,7 +29,7 @@ services:
     image: nicolargo/glances:latest
     container_name: glances
     restart: unless-stopped
-    command: -w
+    command: glances -w
     networks:
       - default
 
